@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Medicijn Voorraad</title>
+<style>
+  body { font-family: Arial, sans-serif; margin: 0; background: #f5f5f5; }
+  header { background-color: #007bff; color: white; padding: 20px; text-align: center; font-size: 24px; }
+  main { padding: 10px; }
+  .med-block { 
+      border: 1px solid #ddd; 
+      border-radius: 8px; 
+      padding: 15px; 
+      margin-bottom: 10px; 
+      background: white; 
+      font-size: 20px; 
+      cursor: pointer; 
+      color: #007bff;
+  }
+  .med-block.low { color: red; }
+  .detail { background: #e9ecef; padding: 10px; margin-top: 5px; border-radius: 5px; }
+  .btn { background-color: #007bff; color: white; border: none; padding: 8px 12px; margin: 2px; border-radius: 5px; cursor: pointer; }
+  .btn:disabled { background-color: #aaa; }
+  input[type="number"] { width: 60px; }
+  select { padding: 5px; }
+  #searchInput { width: 100%; padding: 8px; margin-bottom: 10px; }
+</style>
+</head>
+<body>
+<header>Medicijn Voorraad</header>
+<main>
+  <input type="text" id="searchInput" placeholder="Zoek medicijn..." />
+  <div id="medList"></div>
+
+  <h3>Nieuw medicijn toevoegen</h3>
+  <input type="text" id="medName" placeholder="Naam medicijn" />
+  <select id="medType">
+    <option value="Tabletten">Tabletten</option>
+    <option value="Pillen">Pillen</option>
+    <option value="Poeder">Poeder</option>
+    <option value="Spuiten">Spuiten</option>
+    <option value="Volume">Volume</option>
+  </select>
+  <input type="number" id="medAmount" placeholder="Aantal" />
+  <input type="number" id="medMin" placeholder="Minimum" />
+  <button class="btn" id="addBtn">Opslaan</button>
+</main>
+
+<!-- Firebase Scripts -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
+  import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
+
+  // Firebase config
+  const firebaseConfig = {
+    apiKey: "AIzaSyAlKynm9wJiGUb-8iBonZIXFi9HlmFrpUM",
+    authDomain: "medicijnvoorraad.firebaseapp.com",
+    projectId: "medicijnvoorraad",
+    storageBucket: "medicijnvoorraad.firebasestorage.app",
+    messagingSenderId: "497097674862",
+    appId: "1:497097674862:web:63f894596ce65e424e567f",
+    measurementId: "G-JTBPNH538Z"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  const medCol = collection(db, "MedicijnVoorraad");
+
+  const medList = document.getElementById("medList");
+  const searchInput = document.getElementById("searchInput");
+
+  // Voeg medicijn toe
+  document.getElementById("addBtn").addEventListener("click", async () => {
+    const name = document.getElementById("medName").value.trim();
+    const type = document.getElementById("medType").value;
+    const amount = parseInt(document.getElementById("medAmount").value);
+    const min = parseInt(document.getElementById("medMin").value);
+
+    if (!name || isNaN(amount) || isNaN(min)) { alert("Vul alles correct in!"); return; }
+
+    await addDoc(medCol, { name, type, amount, min });
+    document.getElementById("medName").value = "";
+    document.getElementById("medAmount").value = "";
+    document.getElementById("medMin").value = "";
+    loadMedicijnen();
+  });
+
+  // Laad medicijnen
+  async function loadMedicijnen() {
+    medList.innerHTML = "";
+    const snapshot = await getDocs(medCol);
+    let meds = [];
+    snapshot.forEach(docSnap => meds.push({ id: docSnap.id, ...docSnap.data() }));
+
+    // Filter search
+    const query = searchInput.value.trim().toLowerCase();
+    if (query) meds = meds.filter(m => m.name.toLowerCase().includes(query));
+
+    meds.forEach(m => {
+      const div = document.createElement("div");
+      div.className = "med-block";
+      if (m.amount < m.min) div.classList.add("low");
+      div.textContent = m.name;
+      div.addEventListener("click", () => showDetail(m));
+      medList.appendChild(div);
+    });
+  }
+
+  searchInput.addEventListener("input", loadMedicijnen);
+
+  function showDetail(m) {
+    const detailDiv = document.createElement("div");
+    detailDiv.className = "detail";
+    detailDiv.innerHTML = `
+      <strong>Naam:</strong> ${m.name}<br>
+      <strong>Type:</strong> 
+      <select id="typeSelect">
+        <option ${m.type=="Tabletten"?"selected":""}>Tabletten</option>
+        <option ${m.type=="Pillen"?"selected":""}>Pillen</option>
+        <option ${m.type=="Poeder"?"selected":""}>Poeder</option>
+        <option ${m.type=="Spuiten"?"selected":""}>Spuiten</option>
+        <option ${m.type=="Volume"?"selected":""}>Volume</option>
+      </select><br>
+      <strong>Aantal:</strong> <input type="number" id="amountInput" value="${m.amount}" /><br>
+      <strong>Minimum:</strong> <input type="number" id="minInput" value="${m.min}" /><br>
+      <button class="btn" id="updateBtn">Update</button>
+      <button class="btn" id="deleteBtn">Delete</button>
+    `;
+    // Verwijder vorige detail
+    const existingDetail = medList.querySelector(".detail");
+    if (existingDetail) existingDetail.remove();
+    const medDivs = [...medList.children].filter(d=>d.textContent===m.name);
+    medDivs[0].after(detailDiv);
+
+    // Update medicijn
+    document.getElementById("updateBtn").addEventListener("click", async () => {
+      const type = document.getElementById("typeSelect").value;
+      const amount = parseInt(document.getElementById("amountInput").value);
+      const min = parseInt(document.getElementById("minInput").value);
+      const docRef = doc(db, "MedicijnVoorraad", m.id);
+      await updateDoc(docRef, { type, amount, min });
+      loadMedicijnen();
+    });
+
+    // Delete medicijn
+    document.getElementById("deleteBtn").addEventListener("click", async () => {
+      const docRef = doc(db, "MedicijnVoorraad", m.id);
+      await deleteDoc(docRef);
+      loadMedicijnen();
+    });
+  }
+
+  loadMedicijnen();
+</script>
+</body>
+</html>
