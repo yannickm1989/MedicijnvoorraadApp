@@ -5,54 +5,85 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Medicijn Voorraad</title>
 <style>
-  body { font-family: Arial, sans-serif; margin: 0; background: #f5f5f5; }
-  header { background-color: #007bff; color: white; padding: 20px; text-align: center; font-size: 24px; }
-  main { padding: 10px; }
-  .med-block { 
-      border: 1px solid #ddd; 
-      border-radius: 8px; 
-      padding: 15px; 
-      margin-bottom: 10px; 
-      background: white; 
-      font-size: 20px; 
-      cursor: pointer; 
-      color: #007bff;
+  body { font-family: Arial, sans-serif; margin: 20px; }
+  h1 { text-align: center; color: #007bff; }
+  
+  .form-group { display: flex; flex-direction: column; margin-bottom: 12px; }
+  input[type="text"], input[type="number"], input[type="date"], select {
+    font-size: 18px;
+    padding: 12px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
   }
-  .med-block.low { color: red; }
-  .detail { background: #e9ecef; padding: 10px; margin-top: 5px; border-radius: 5px; }
-  .btn { background-color: #007bff; color: white; border: none; padding: 8px 12px; margin: 2px; border-radius: 5px; cursor: pointer; }
-  .btn:disabled { background-color: #aaa; }
-  input[type="number"] { width: 60px; }
-  select { padding: 5px; }
-  #searchInput { width: 100%; padding: 8px; margin-bottom: 10px; }
+  button { padding: 12px; font-size: 18px; background-color: #007bff; color: white; border: none; border-radius: 6px; cursor: pointer; }
+  button:hover { background-color: #0056b3; }
+
+  #searchInput { margin: 20px 0; padding: 10px; font-size: 16px; width: 100%; border-radius: 6px; border: 1px solid #ccc; }
+
+  #medList {
+    margin-top: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .med-block {
+    padding: 16px;
+    border-radius: 8px;
+    background-color: #e7f0ff;
+    color: #007bff;
+    font-size: 20px;
+    min-height: 80vh; /* vult bijna het hele scherm op mobiel */
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+  }
+  .med-block.low { color: red; font-weight: bold; }
+  .med-block.expired { color: darkred; font-weight: bold; }
+
+  .detail { padding: 10px; border: 1px solid #ccc; border-radius: 6px; margin-bottom: 20px; }
 </style>
 </head>
 <body>
-<header>Medicijn Voorraad</header>
+
+<h1>Medicijn Voorraad</h1>
+
 <main>
+  <h3>Nieuw medicijn toevoegen</h3>
+  <div class="form-group">
+    <input type="text" id="medName" placeholder="Naam medicijn" />
+  </div>
+  <div class="form-group">
+    <select id="medType">
+      <option value="Tabletten">Tabletten</option>
+      <option value="Pillen">Pillen</option>
+      <option value="Poeder">Poeder</option>
+      <option value="Spuiten">Spuiten</option>
+      <option value="Volume">Volume</option>
+    </select>
+  </div>
+  <div class="form-group">
+    <input type="number" id="medAmount" placeholder="Aantal" />
+  </div>
+  <div class="form-group">
+    <input type="number" id="medMin" placeholder="Minimum" />
+  </div>
+  <div class="form-group">
+    <input type="date" id="medExpiry" placeholder="Houdbaar tot" />
+  </div>
+  <div class="form-group">
+    <button id="addBtn">Opslaan</button>
+  </div>
+
   <input type="text" id="searchInput" placeholder="Zoek medicijn..." />
   <div id="medList"></div>
-
-  <h3>Nieuw medicijn toevoegen</h3>
-  <input type="text" id="medName" placeholder="Naam medicijn" />
-  <select id="medType">
-    <option value="Tabletten">Tabletten</option>
-    <option value="Pillen">Pillen</option>
-    <option value="Poeder">Poeder</option>
-    <option value="Spuiten">Spuiten</option>
-    <option value="Volume">Volume</option>
-  </select>
-  <input type="number" id="medAmount" placeholder="Aantal" />
-  <input type="number" id="medMin" placeholder="Minimum" />
-  <button class="btn" id="addBtn">Opslaan</button>
 </main>
 
-<!-- Firebase Scripts -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
   import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
 
-  // Firebase config
   const firebaseConfig = {
     apiKey: "AIzaSyAlKynm9wJiGUb-8iBonZIXFi9HlmFrpUM",
     authDomain: "medicijnvoorraad.firebaseapp.com",
@@ -70,88 +101,95 @@
   const medList = document.getElementById("medList");
   const searchInput = document.getElementById("searchInput");
 
-  // Voeg medicijn toe
-  document.getElementById("addBtn").addEventListener("click", async () => {
-    const name = document.getElementById("medName").value.trim();
+  async function addMed() {
+    const name = document.getElementById("medName").value;
     const type = document.getElementById("medType").value;
-    const amount = parseInt(document.getElementById("medAmount").value);
-    const min = parseInt(document.getElementById("medMin").value);
+    const amount = Number(document.getElementById("medAmount").value);
+    const min = Number(document.getElementById("medMin").value);
+    const expiry = document.getElementById("medExpiry").value;
 
-    if (!name || isNaN(amount) || isNaN(min)) { alert("Vul alles correct in!"); return; }
+    if (!name || !amount || !min) { alert("Vul alle verplichte velden in"); return; }
 
-    await addDoc(medCol, { name, type, amount, min });
+    await addDoc(medCol, { name, type, amount, min, expiry });
+    loadMeds();
     document.getElementById("medName").value = "";
     document.getElementById("medAmount").value = "";
     document.getElementById("medMin").value = "";
-    loadMedicijnen();
-  });
+    document.getElementById("medExpiry").value = "";
+  }
 
-  // Laad medicijnen
-  async function loadMedicijnen() {
+  async function loadMeds() {
     medList.innerHTML = "";
     const snapshot = await getDocs(medCol);
-    let meds = [];
-    snapshot.forEach(docSnap => meds.push({ id: docSnap.id, ...docSnap.data() }));
+    const meds = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const query = searchInput.value.toLowerCase();
+    const today = new Date();
 
-    // Filter search
-    const query = searchInput.value.trim().toLowerCase();
-    if (query) meds = meds.filter(m => m.name.toLowerCase().includes(query));
-
-    meds.forEach(m => {
+    meds.filter(m => m.name.toLowerCase().includes(query)).forEach(m => {
       const div = document.createElement("div");
       div.className = "med-block";
-      if (m.amount < m.min) div.classList.add("low");
-      div.textContent = m.name;
+
+      if (m.expiry && new Date(m.expiry) < today) {
+        div.classList.add("expired");
+        div.textContent = `${m.name} (VERVALLEN!)`;
+      } else if (m.amount < m.min) {
+        div.classList.add("low");
+        div.textContent = `${m.name} (bijna op: ${m.amount})`;
+      } else {
+        div.textContent = m.name;
+      }
+
       div.addEventListener("click", () => showDetail(m));
       medList.appendChild(div);
     });
   }
 
-  searchInput.addEventListener("input", loadMedicijnen);
-
-  function showDetail(m) {
-    const detailDiv = document.createElement("div");
-    detailDiv.className = "detail";
-    detailDiv.innerHTML = `
-      <strong>Naam:</strong> ${m.name}<br>
-      <strong>Type:</strong> 
-      <select id="typeSelect">
-        <option ${m.type=="Tabletten"?"selected":""}>Tabletten</option>
-        <option ${m.type=="Pillen"?"selected":""}>Pillen</option>
-        <option ${m.type=="Poeder"?"selected":""}>Poeder</option>
-        <option ${m.type=="Spuiten"?"selected":""}>Spuiten</option>
-        <option ${m.type=="Volume"?"selected":""}>Volume</option>
+  async function showDetail(m) {
+    const detail = document.createElement("div");
+    detail.className = "detail";
+    detail.innerHTML = `
+      <strong>Naam:</strong> <input type="text" id="nameInput" value="${m.name}"><br>
+      <strong>Type:</strong>
+      <select id="typeInput">
+        <option value="Tabletten" ${m.type=="Tabletten"?"selected":""}>Tabletten</option>
+        <option value="Pillen" ${m.type=="Pillen"?"selected":""}>Pillen</option>
+        <option value="Poeder" ${m.type=="Poeder"?"selected":""}>Poeder</option>
+        <option value="Spuiten" ${m.type=="Spuiten"?"selected":""}>Spuiten</option>
+        <option value="Volume" ${m.type=="Volume"?"selected":""}>Volume</option>
       </select><br>
-      <strong>Aantal:</strong> <input type="number" id="amountInput" value="${m.amount}" /><br>
-      <strong>Minimum:</strong> <input type="number" id="minInput" value="${m.min}" /><br>
-      <button class="btn" id="updateBtn">Update</button>
-      <button class="btn" id="deleteBtn">Delete</button>
+      <strong>Aantal:</strong> <input type="number" id="amountInput" value="${m.amount}"><br>
+      <strong>Minimum:</strong> <input type="number" id="minInput" value="${m.min}"><br>
+      <strong>Houdbaar tot:</strong> <input type="date" id="expiryInput" value="${m.expiry || ''}"><br>
+      <button id="updateBtn">Update</button>
+      <button id="deleteBtn" style="background-color:red;">Delete</button>
     `;
-    // Verwijder vorige detail
-    const existingDetail = medList.querySelector(".detail");
-    if (existingDetail) existingDetail.remove();
-    const medDivs = [...medList.children].filter(d=>d.textContent===m.name);
-    medDivs[0].after(detailDiv);
+    medList.innerHTML = "";
+    medList.appendChild(detail);
 
-    // Update medicijn
-    document.getElementById("updateBtn").addEventListener("click", async () => {
-      const type = document.getElementById("typeSelect").value;
-      const amount = parseInt(document.getElementById("amountInput").value);
-      const min = parseInt(document.getElementById("minInput").value);
-      const docRef = doc(db, "MedicijnVoorraad", m.id);
-      await updateDoc(docRef, { type, amount, min });
-      loadMedicijnen();
-    });
+    document.getElementById("updateBtn").onclick = async () => {
+      await updateDoc(doc(medCol, m.id), {
+        name: document.getElementById("nameInput").value,
+        type: document.getElementById("typeInput").value,
+        amount: Number(document.getElementById("amountInput").value),
+        min: Number(document.getElementById("minInput").value),
+        expiry: document.getElementById("expiryInput").value
+      });
+      loadMeds();
+    };
 
-    // Delete medicijn
-    document.getElementById("deleteBtn").addEventListener("click", async () => {
-      const docRef = doc(db, "MedicijnVoorraad", m.id);
-      await deleteDoc(docRef);
-      loadMedicijnen();
-    });
+    document.getElementById("deleteBtn").onclick = async () => {
+      if (confirm("Weet je zeker dat je dit medicijn wilt verwijderen?")) {
+        await deleteDoc(doc(medCol, m.id));
+        loadMeds();
+      }
+    };
   }
 
-  loadMedicijnen();
+  document.getElementById("addBtn").addEventListener("click", addMed);
+  searchInput.addEventListener("input", loadMeds);
+
+  loadMeds();
 </script>
+
 </body>
 </html>
