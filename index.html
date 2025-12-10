@@ -1,89 +1,171 @@
 <!DOCTYPE html>
 <html lang="nl">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>Medicijn Voorraad</title>
 <style>
-  body { font-family: Arial, sans-serif; margin: 20px; }
-  h1 { text-align: center; color: #007bff; }
-
-  .form-group { display: flex; flex-direction: column; margin-bottom: 12px; }
-  input[type="text"], input[type="number"], input[type="date"], select {
-    font-size: 18px;
-    padding: 12px;
-    border-radius: 6px;
-    border: 1px solid #ccc;
+  :root {
+    --blue: #007bff;
+    --red: #c62828;
+    --muted: #6b7280;
+    --card-bg: #ffffff;
+    --page-bg: #f5f7fb;
   }
-  button { padding: 12px; font-size: 18px; background-color: #007bff; color: white; border: none; border-radius: 6px; cursor: pointer; }
-  button:hover { background-color: #0056b3; }
+  body {
+    margin: 0;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    background: var(--page-bg);
+    color: #111827;
+  }
+  header {
+    background: var(--blue);
+    color: white;
+    padding: 18px 12px;
+    text-align: center;
+    font-size: 20px;
+    font-weight: 600;
+  }
+  main { max-width: 820px; margin: 16px auto; padding: 0 12px; }
 
-  #searchInput { margin: 20px 0; padding: 10px; font-size: 16px; width: 100%; border-radius: 6px; border: 1px solid #ccc; }
-
-  #medList {
-    margin-top: 20px;
+  /* Warnings area */
+  .warnings {
+    margin-top: 12px;
+    margin-bottom: 12px;
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 6px;
+  }
+  .warning-item {
+    background: #fff4f4;
+    border-left: 4px solid var(--red);
+    color: var(--red);
+    padding: 10px 12px;
+    border-radius: 6px;
+    font-weight: 600;
   }
 
-  .med-block {
-    padding: 16px;
+  /* Form */
+  .card {
+    background: var(--card-bg);
+    padding: 12px;
+    border-radius: 10px;
+    box-shadow: 0 6px 18px rgba(28,45,70,0.06);
+    margin-bottom: 12px;
+  }
+  .form-row { display:flex; gap:10px; flex-wrap:wrap; }
+  .form-group { flex:1 1 100%; min-width:160px; display:flex; flex-direction:column; margin-bottom:8px; }
+  label { font-size:13px; margin-bottom:6px; color:var(--muted); }
+  input[type="text"], input[type="number"], input[type="date"], select {
+    padding:10px 12px; border-radius:8px; border:1px solid #e5e7eb; font-size:16px;
+  }
+  button.primary {
+    background:var(--blue); color:white; border:none; padding:10px 14px; border-radius:8px; cursor:pointer; font-weight:600;
+  }
+  button.primary:active { transform: translateY(1px); }
+
+  /* Compact list (one-line per med) */
+  .compact-list {
+    margin-top: 10px;
+    display:flex; flex-direction:column; gap:8px;
+  }
+  .compact-item {
+    background: white;
     border-radius: 8px;
-    background-color: #e7f0ff;
-    color: #007bff;
-    font-size: 20px;
-    min-height: 80vh; /* vult bijna het hele scherm op mobiel */
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    cursor: pointer;
+    padding: 12px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    box-shadow: 0 2px 8px rgba(12,18,36,0.04);
+    cursor:pointer;
   }
-  .med-block.low { color: red; font-weight: bold; }
-  .med-block.expired { color: darkred; font-weight: bold; }
+  .compact-name { font-size:18px; color:var(--blue); font-weight:600; }
+  .compact-badges { display:flex; gap:8px; align-items:center; }
 
-  .detail { padding: 10px; border: 1px solid #ccc; border-radius: 6px; margin-bottom: 20px; }
+  .badge-low { color:#b45309; background:#fff7ed; padding:6px 8px; border-radius:6px; font-weight:600; }
+  .badge-expired { color:var(--red); background:#fff4f4; padding:6px 8px; border-radius:6px; font-weight:700; }
+
+  /* Detail panel */
+  .detail-panel { margin-top:12px; background:white; padding:12px; border-radius:10px; box-shadow:0 6px 18px rgba(28,45,70,0.06);}
+  .detail-row { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:8px; }
+  .small-btn { padding:8px 10px; border-radius:8px; border:none; cursor:pointer; font-weight:600; background:var(--blue); color:white;}
+  .del-btn { background:#dc2626; color:white; border:none; padding:8px 10px; border-radius:8px; cursor:pointer; font-weight:700; }
+
+  /* Responsive */
+  @media (min-width:720px){
+    .form-row .form-group { flex: 1 1 48%; }
+    .form-row .full { flex-basis:100%; }
+  }
 </style>
 </head>
 <body>
-
-<h1>Medicijn Voorraad</h1>
+<header>Medicijn Voorraad</header>
 
 <main>
-  <h3>Nieuw medicijn toevoegen</h3>
-  <div class="form-group">
-    <input type="text" id="medName" placeholder="Naam medicijn" />
-  </div>
-  <div class="form-group">
-    <select id="medType">
-      <option value="Tabletten">Tabletten</option>
-      <option value="Pillen">Pillen</option>
-      <option value="Poeder">Poeder</option>
-      <option value="Spuiten">Spuiten</option>
-      <option value="Volume">Volume</option>
-    </select>
-  </div>
-  <div class="form-group">
-    <input type="number" id="medAmount" placeholder="Aantal" />
-  </div>
-  <div class="form-group">
-    <input type="number" id="medMin" placeholder="Minimum" />
-  </div>
-  <div class="form-group">
-    <input type="date" id="medExpiry" placeholder="Houdbaar tot" />
-  </div>
-  <div class="form-group">
-    <button id="addBtn">Opslaan</button>
+  <!-- Warnings (top) -->
+  <div id="warningsContainer" class="warnings"></div>
+
+  <!-- Add form -->
+  <div class="card" id="addCard">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <strong>Nieuw medicijn toevoegen</strong>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label for="medName">Naam</label>
+        <input id="medName" type="text" placeholder="Bijv. Paracetamol">
+      </div>
+
+      <div class="form-group">
+        <label for="medType">Type</label>
+        <select id="medType">
+          <option value="Tabletten">Tabletten</option>
+          <option value="Pillen">Pillen</option>
+          <option value="Poeder">Poeder</option>
+          <option value="Spuiten">Spuiten</option>
+          <option value="Volume">Volume</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="medAmount">Aantal</label>
+        <input id="medAmount" type="number" min="0" placeholder="0">
+      </div>
+
+      <div class="form-group">
+        <label for="medMin">Minimum (bijna op)</label>
+        <input id="medMin" type="number" min="0" placeholder="0">
+      </div>
+
+      <div class="form-group full">
+        <label for="medExpiry">Houdbaar tot (optioneel)</label>
+        <input id="medExpiry" type="date">
+      </div>
+    </div>
+
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:6px">
+      <button id="addBtn" class="primary">Opslaan</button>
+    </div>
   </div>
 
-  <input type="text" id="searchInput" placeholder="Zoek medicijn..." />
-  <div id="medList"></div>
+  <!-- Search + compact list -->
+  <div style="margin-top:10px">
+    <input id="searchInput" type="text" placeholder="Zoek medicijn..." style="width:100%;padding:10px;border-radius:8px;border:1px solid #e5e7eb;font-size:15px">
+  </div>
+
+  <div id="listContainer" class="compact-list" aria-live="polite" style="margin-top:12px"></div>
+
+  <!-- Detail area (revealed when clicked) -->
+  <div id="detailContainer"></div>
 </main>
 
+<!-- Firebase + App logic -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
   import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
 
+  // --- Firebase config (gebruik jouw config) ---
   const firebaseConfig = {
     apiKey: "AIzaSyAlKynm9wJiGUb-8iBonZIXFi9HlmFrpUM",
     authDomain: "medicijnvoorraad.firebaseapp.com",
@@ -98,98 +180,204 @@
   const db = getFirestore(app);
   const medCol = collection(db, "MedicijnVoorraad");
 
-  const medList = document.getElementById("medList");
-  const searchInput = document.getElementById("searchInput");
+  // UI elements
+  const warningsContainer = document.getElementById('warningsContainer');
+  const listContainer = document.getElementById('listContainer');
+  const detailContainer = document.getElementById('detailContainer');
+  const searchInput = document.getElementById('searchInput');
 
-  async function addMed() {
-    const name = document.getElementById("medName").value;
-    const type = document.getElementById("medType").value;
-    const amount = Number(document.getElementById("medAmount").value);
-    const min = Number(document.getElementById("medMin").value);
-    const expiry = document.getElementById("medExpiry").value;
+  const medName = document.getElementById('medName');
+  const medType = document.getElementById('medType');
+  const medAmount = document.getElementById('medAmount');
+  const medMin = document.getElementById('medMin');
+  const medExpiry = document.getElementById('medExpiry');
+  const addBtn = document.getElementById('addBtn');
 
-    if (!name || !amount || !min) { alert("Vul alle verplichte velden in"); return; }
-
-    await addDoc(medCol, { name, type, amount, min, expiry });
-    loadMeds();
-    document.getElementById("medName").value = "";
-    document.getElementById("medAmount").value = "";
-    document.getElementById("medMin").value = "";
-    document.getElementById("medExpiry").value = "";
+  // --- Helpers ---
+  function formatDateISOToReadable(iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    if (isNaN(d)) return iso;
+    return d.toLocaleDateString();
   }
 
-  async function loadMeds() {
-    medList.innerHTML = "";
+  // --- Load & render ---
+  async function loadAndRender() {
+    warningsContainer.innerHTML = '';
+    listContainer.innerHTML = '';
+    detailContainer.innerHTML = '';
+
     const snapshot = await getDocs(medCol);
-    const meds = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    const query = searchInput.value.toLowerCase();
+    const meds = snapshot.docs.map(s => ({ id: s.id, ...s.data() }));
+    const q = (searchInput.value||'').trim().toLowerCase();
+
     const today = new Date();
+    const warnings = [];
 
-    meds.filter(m => m.name.toLowerCase().includes(query)).forEach(m => {
-      const div = document.createElement("div");
-      div.className = "med-block";
+    // prepare compact list (sorted by name)
+    meds.sort((a,b)=> (a.name||'').localeCompare(b.name||''));
 
-      if (m.expiry && new Date(m.expiry) < today) {
-        div.classList.add("expired");
-        div.textContent = `${m.name} (VERVALLEN!)`;
-      } else if (m.amount < m.min) {
-        div.classList.add("low");
-        div.textContent = `${m.name} (bijna op: ${m.amount})`;
-      } else {
-        div.textContent = m.name;
+    meds.forEach(m => {
+      // determine warning states
+      let isExpired = false;
+      if (m.expiry) {
+        const ex = new Date(m.expiry);
+        if (!isNaN(ex) && ex < today) isExpired = true;
+      }
+      const isLow = (typeof m.min === 'number' ? m.amount <= m.min : (Number(m.amount) <= Number(m.min)));
+
+      if (isExpired) {
+        warnings.push({ type: 'expired', msg: `${m.name} — vervallen op ${formatDateISOToReadable(m.expiry)}` });
+      } else if (isLow) {
+        warnings.push({ type: 'low', msg: `${m.name} — bijna op (${m.amount})` });
       }
 
-      div.addEventListener("click", () => showDetail(m));
-      medList.appendChild(div);
+      if (q && !(m.name||'').toLowerCase().includes(q)) return; // filter if search active
+
+      // compact item
+      const ci = document.createElement('div');
+      ci.className = 'compact-item';
+      ci.dataset.id = m.id;
+
+      const left = document.createElement('div');
+      left.style.display = 'flex';
+      left.style.flexDirection = 'column';
+      const nameSpan = document.createElement('div');
+      nameSpan.className = 'compact-name';
+      nameSpan.textContent = m.name;
+      left.appendChild(nameSpan);
+
+      // small meta row if wanted (optional)
+      const meta = document.createElement('div');
+      meta.style.fontSize = '13px';
+      meta.style.color = '#6b7280';
+      meta.textContent = (m.type ? m.type + (m.amount !== undefined ? ' • ' : '') : '') + (m.amount !== undefined ? `${m.amount}` : '');
+      left.appendChild(meta);
+
+      const badges = document.createElement('div');
+      badges.className = 'compact-badges';
+
+      if (isExpired) {
+        const b = document.createElement('div');
+        b.className = 'badge-expired';
+        b.textContent = 'VERVALLEN';
+        badges.appendChild(b);
+      } else if (isLow) {
+        const b = document.createElement('div');
+        b.className = 'badge-low';
+        b.textContent = `bijna op (${m.amount})`;
+        badges.appendChild(b);
+      }
+
+      ci.appendChild(left);
+      ci.appendChild(badges);
+
+      ci.addEventListener('click', ()=> openDetail(m));
+      listContainer.appendChild(ci);
+    });
+
+    // render warnings at top (one per medicijn, red)
+    if (warnings.length > 0) {
+      warnings.forEach(w => {
+        const el = document.createElement('div');
+        el.className = 'warning-item';
+        el.textContent = w.msg;
+        warningsContainer.appendChild(el);
+      });
+    }
+  }
+
+  // --- Add new med ---
+  addBtn.addEventListener('click', async ()=> {
+    const name = (medName.value||'').trim();
+    const type = medType.value;
+    const amount = medAmount.value === '' ? null : Number(medAmount.value);
+    const min = medMin.value === '' ? null : Number(medMin.value);
+    const expiry = medExpiry.value || null;
+
+    if (!name) { alert('Vul een naam in'); return; }
+    if (amount === null || Number.isNaN(amount)) { alert('Vul een correct aantal in'); return; }
+    if (min === null || Number.isNaN(min)) { alert('Vul een correct minimum in'); return; }
+
+    await addDoc(medCol, { name, type, amount, min, expiry });
+    medName.value=''; medAmount.value=''; medMin.value=''; medExpiry.value='';
+    loadAndRender();
+  });
+
+  // --- Detail panel (open when clicking an item) ---
+  function openDetail(item) {
+    detailContainer.innerHTML = '';
+    const panel = document.createElement('div');
+    panel.className = 'detail-panel card';
+
+    panel.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <strong>Detail — ${item.name}</strong>
+        <button id="closeDetail" style="background:none;border:none;font-weight:700;cursor:pointer">X</button>
+      </div>
+      <div class="detail-row">
+        <div class="form-group" style="flex:1"><label>Naam</label><input id="d_name" type="text" value="${escapeHtml(item.name)}"></div>
+        <div class="form-group" style="flex:1"><label>Type</label>
+          <select id="d_type">
+            <option ${item.type==='Tabletten'?'selected':''}>Tabletten</option>
+            <option ${item.type==='Pillen'?'selected':''}>Pillen</option>
+            <option ${item.type==='Poeder'?'selected':''}>Poeder</option>
+            <option ${item.type==='Spuiten'?'selected':''}>Spuiten</option>
+            <option ${item.type==='Volume'?'selected':''}>Volume</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="detail-row">
+        <div class="form-group" style="flex:1"><label>Aantal</label><input id="d_amount" type="number" value="${item.amount}"></div>
+        <div class="form-group" style="flex:1"><label>Minimum</label><input id="d_min" type="number" value="${item.min}"></div>
+      </div>
+
+      <div class="detail-row">
+        <div class="form-group" style="flex:1"><label>Houdbaar tot</label><input id="d_expiry" type="date" value="${item.expiry || ''}"></div>
+      </div>
+
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px">
+        <button id="d_update" class="small-btn">Opslaan</button>
+        <button id="d_delete" class="del-btn">Verwijder</button>
+      </div>
+    `;
+
+    detailContainer.appendChild(panel);
+
+    document.getElementById('closeDetail').addEventListener('click', ()=> { detailContainer.innerHTML=''; });
+
+    document.getElementById('d_update').addEventListener('click', async ()=> {
+      const newName = document.getElementById('d_name').value.trim();
+      const newType = document.getElementById('d_type').value;
+      const newAmount = Number(document.getElementById('d_amount').value);
+      const newMin = Number(document.getElementById('d_min').value);
+      const newExpiry = document.getElementById('d_expiry').value || null;
+
+      if (!newName) return alert('Naam verplicht');
+      if (Number.isNaN(newAmount)) return alert('Aantal fout');
+      if (Number.isNaN(newMin)) return alert('Minimum fout');
+
+      await updateDoc(doc(medCol, item.id), { name: newName, type: newType, amount: newAmount, min: newMin, expiry: newExpiry });
+      detailContainer.innerHTML=''; loadAndRender();
+    });
+
+    document.getElementById('d_delete').addEventListener('click', async ()=> {
+      if (!confirm(`Verwijder ${item.name}?`)) return;
+      await deleteDoc(doc(medCol, item.id));
+      detailContainer.innerHTML=''; loadAndRender();
     });
   }
 
-  async function showDetail(m) {
-    const detail = document.createElement("div");
-    detail.className = "detail";
-    detail.innerHTML = `
-      <strong>Naam:</strong> <input type="text" id="nameInput" value="${m.name}"><br>
-      <strong>Type:</strong>
-      <select id="typeInput">
-        <option value="Tabletten" ${m.type=="Tabletten"?"selected":""}>Tabletten</option>
-        <option value="Pillen" ${m.type=="Pillen"?"selected":""}>Pillen</option>
-        <option value="Poeder" ${m.type=="Poeder"?"selected":""}>Poeder</option>
-        <option value="Spuiten" ${m.type=="Spuiten"?"selected":""}>Spuiten</option>
-        <option value="Volume" ${m.type=="Volume"?"selected":""}>Volume</option>
-      </select><br>
-      <strong>Aantal:</strong> <input type="number" id="amountInput" value="${m.amount}"><br>
-      <strong>Minimum:</strong> <input type="number" id="minInput" value="${m.min}"><br>
-      <strong>Houdbaar tot:</strong> <input type="date" id="expiryInput" value="${m.expiry || ''}"><br>
-      <button id="updateBtn">Update</button>
-      <button id="deleteBtn" style="background-color:red;">Delete</button>
-    `;
-    medList.innerHTML = "";
-    medList.appendChild(detail);
-
-    document.getElementById("updateBtn").onclick = async () => {
-      await updateDoc(doc(medCol, m.id), {
-        name: document.getElementById("nameInput").value,
-        type: document.getElementById("typeInput").value,
-        amount: Number(document.getElementById("amountInput").value),
-        min: Number(document.getElementById("minInput").value),
-        expiry: document.getElementById("expiryInput").value
-      });
-      loadMeds();
-    };
-
-    document.getElementById("deleteBtn").onclick = async () => {
-      if (confirm("Weet je zeker dat je dit medicijn wilt verwijderen?")) {
-        await deleteDoc(doc(medCol, m.id));
-        loadMeds();
-      }
-    };
+  // small HTML escape helper
+  function escapeHtml(str) {
+    return (str||'').replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
   }
 
-  document.getElementById("addBtn").addEventListener("click", addMed);
-  searchInput.addEventListener("input", loadMeds);
+  // load on start and on search input
+  searchInput.addEventListener('input', loadAndRender);
+  loadAndRender();
 
-  loadMeds();
 </script>
-
 </body>
 </html>
